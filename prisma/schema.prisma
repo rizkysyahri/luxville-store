@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model User {
+  id     String  @id @default(cuid())
+  name   String?
+  email  String? @unique
+  image  String?
+  orders Order[]
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  price       Int
+  image       String[]
+  sizes       Decimal[]   @default([7, 8, 9, 10, 10.5, 11, 12])
+  description String?
+  quantity    Int
+  categoryId  String
+  deleted     Boolean     @default(false)
+  slug        String      @unique
+  title       String?
+  orderItems  OrderItem[]
+  category    Category    @relation(fields: [categoryId], references: [id])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  image       String
+  description String
+  product     Product[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  productId String
+  orderId   String
+  size      Decimal
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+}
+
+model Order {
+  id                        String      @id @default(cuid())
+  userId                    String
+  status                    Status      @default(Created)
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime?
+  stripePaymentIntentId     String?     @unique
+  stripePaymentClientSecret String?
+  user                      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems                OrderItem[]
+
+  @@index([userId])
+}
+
+enum Status {
+  Created
+  NotPaid
+  Processing
+  Failed
+  Paid
+}
